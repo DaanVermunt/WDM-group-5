@@ -6,8 +6,7 @@ import itertools, sys
 cities = ['Asheville','Austin', 'Boston', 'Chicago', 'Denver', 'Los_Angeles', 'Nashville', 'New_Orleans',
           'New_York_City', 'Oakland', 'Portland', 'San_Diego', 'San_Fransisco', 'Santa_Cruz', 'Seattle',
           'Washington']
-#file_types = ['calendar', 'listings', 'reviews']
-file_types = ['listings', 'reviews']
+file_types = ['calendar', 'listings', 'reviews']
 
 
 
