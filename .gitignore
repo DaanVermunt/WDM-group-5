@@ -3,3 +3,4 @@
 data/**/*.csv
 data/New_York_City/reviews.*
 data/New_York_City/*.csv
+flink/*
