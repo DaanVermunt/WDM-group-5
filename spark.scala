@@ -1,4 +1,7 @@
-//Most of the implementation are done on Spark-SQL to better understand Spark's performance with MySQL/ Cassandra
+// Most of the implementation are done on Spark-SQL to better understand Spark's performance with MySQL/ Cassandra.
+// The data loaded to Spark are of the subsets of calendar(1.4 GB), listing(368.3) and reviews(1.2 GB) 
+// The large data sizes lead to high load time, but is justified to evaluate the performance of Spark on large data dumps
+// Spark-SQL uses the Spark-Core and is substantially faster than the previous RDD methods (which is fexible, but slow)
 
 //imports
 import org.apache.spark.sql.SparkSession
@@ -33,19 +36,16 @@ val cleanListing = tempListing.select("*").filter((len(col("name")) < 16))
 val countReviews = cleanReviews.select($"comments", explode(split($"comments", " ")).as("words"))
 val count =  countReviews.groupBy("words").count()
 
-//2. remove stop words from the reviews
-//val stopWords = Set("i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now", "Now", "I", "His", "Her", "My", "Their", "Our")
-
+//2. remove stop words from the reviews - Produces Runtime Error
+//2.1. Tokenize the review text as unigrams
 //val tokenizer = new Tokenizer().setInputCol("comments").setOutputCol("text")
 //val countTokens = udf{(words: Seq[String]) => words.length}
 //val tokenized = tokenizer.transform(reviews)
 //tokenized.select("comments","text").withColumn("tokens", countTokens(col("text"))).show()
-
+//2.2. StopWord Removal
 //val remover = new StopWordsRemover()
 //remover.setInputCol("text").setOutputCol("filtered")
 //remover.transform(tokenized).show()
-
-
 
 //register df as temp sql view
 cleanListing.createOrReplaceTempView("listingView")
@@ -60,8 +60,29 @@ spark.time((session.sql("select * from listingView")).show())
 count.createOrReplaceTempView("counts")
 spark.time((session.sql("select * from counts order by count desc" )).show())
 
+
 //total count based on distinct listings that are booked
 spark.time((session.sql("select count(distinct listing_id)  from calendarView where available = 'f'" )).show())
 
 //counting unavailable listings and grouping them based on listing_id
-spark.time((session.sql("select listing_id, sum(case when available='f' then 1 END) from calendarView group by listing_id order by sum(case when available='f' then 1 END) desc" )).show())
+spark.time((session.sql("select(select listing_id, sum(case when available='f' then 1 END) from calendarView group by listing_id order by sum(case when available='f' then 1 END) desc)" )).show())
+
+//Scala Data Frame alternative 
+//calendar.groupBy("listing_id").count().filter(calendar("available") === "f")
+
+// popular city based on month
+//join name,neighborhood,city,available,date,month,listing_id from calendar, listings
+val df = calendar.join(listing,listing("id")===calendar("listing_id"))
+
+df.createOrReplaceTempView("combinedData")
+
+//generates an SQL parser Exception
+//spark.time((session.sql("select id, name, room_type, property_type, neighborhood_overview, city, sum(case when available='f' then 1 END) from combinedData group by listing_id order by sum(case when available='f' then 1 END) desc)" )).show())
+
+
+
+
+
+
+
+
